@@ -108,6 +108,10 @@
       el.style.top = `${top}px`;
       el.style.width = `${width}px`;
       el.style.height = `${height}px`;
+
+      // Hover ring should be a CIRCLE, not an ellipse. Use the larger dimension as diameter.
+      const ringSize = Math.max(width, height) * 1.45;
+      el.style.setProperty('--ring-size', `${ringSize.toFixed(2)}px`);
     });
   };
 

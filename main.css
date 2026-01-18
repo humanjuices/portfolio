@@ -3,8 +3,8 @@
   --text: rgba(255, 255, 255, 0.92);
   --muted: rgba(255, 255, 255, 0.72);
   /* Caution tape sizing */
-  --tape-h: 26px;            /* investigate (base) */
-  --tape-primary-h: 32px;    /* HUMANJUICES (red) */
+  --tape-h: 34px;            /* investigate + news (base) */
+  --tape-primary-h: 42px;    /* HUMANJUICES (red) */
 }
 
 html, body {
@@ -76,11 +76,25 @@ body::before {
   outline: none;
 }
 
-.hotspot:focus-visible,
-.hotspot:hover {
-  /* subtle dev affordance; remove later if desired */
-  outline: 2px solid rgba(255, 255, 255, 0.55);
-  outline-offset: 2px;
+.hotspot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--ring-size, 0px);
+  height: var(--ring-size, 0px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 5px solid rgba(255, 0, 0, 0.95);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.25), 0 0 18px rgba(255, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.hotspot:hover::after,
+.hotspot:focus-visible::after {
+  opacity: 1;
 }
 
 /* ---- Animated caution tape banner ---- */
@@ -201,8 +215,8 @@ body::before {
 
 @media (max-width: 520px) {
   :root {
-    --tape-h: 22px;         /* investigate/base */
-    --tape-primary-h: 28px; /* HUMANJUICES */
+    --tape-h: 30px;         /* investigate + news (base) */
+    --tape-primary-h: 38px; /* HUMANJUICES */
   }
 
   .caution-tape--red {
