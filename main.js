@@ -59,6 +59,19 @@
       reserveBottomPx = Math.max(0, rect.bottom - n.top);
       reserveBottomPx = clamp(reserveBottomPx, 0, Math.max(0, ch - 10));
     }
+
+    // Reserve extra bottom space so the cop can be big without touching the lowest clickable marker.
+    // We need this on desktop too; otherwise on very wide viewports the crop can push markers
+    // so low that the cop has almost no room.
+    const desiredCopSpacePx =
+      window.innerWidth <= 520 ? 220 :
+      window.innerWidth <= 820 ? 200 :
+      260;
+    reserveBottomPx = clamp(
+      Math.max(reserveBottomPx, desiredCopSpacePx),
+      0,
+      Math.max(0, ch - 10),
+    );
     const safeTop = reserveTopPx / scale;
     const safeBottom = Math.max(1, (ch - reserveBottomPx) / scale);
 
@@ -113,6 +126,33 @@
       const ringSize = Math.max(width, height) * 1.45;
       el.style.setProperty('--ring-size', `${ringSize.toFixed(2)}px`);
     });
+
+    // ---- Size/position the cop image (bottom-left) ----
+    const cop = document.querySelector('.cop');
+    if (cop && cop instanceof HTMLImageElement) {
+      const margin = 10;
+
+      // Find the lowest (visually) hotspot on screen.
+      let lowestHotspotBottom = 0;
+      document.querySelectorAll('.hotspot[data-bbox]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          lowestHotspotBottom = Math.max(lowestHotspotBottom, r.bottom);
+        }
+      });
+
+      // Align the cop's bottom to the bottom edge of the news banner.
+      const news = document.querySelector('.caution-tape--news');
+      const anchorY = news ? news.getBoundingClientRect().bottom : window.innerHeight;
+      const bottomOffset = Math.max(0, window.innerHeight - anchorY);
+      cop.style.bottom = `${Math.round(bottomOffset)}px`;
+
+      // Constrain the cop so it doesn't touch the lowest clickable marker.
+      const maxH = Math.max(0, anchorY - lowestHotspotBottom - margin);
+
+      // Apply the max height; let the image keep its aspect ratio.
+      cop.style.maxHeight = `${Math.floor(maxH)}px`;
+    }
   };
 
   if (img.complete) update();
@@ -122,7 +162,7 @@
   // ---- Caution tape: ensure the marquee is "full" at page load (no empty tape) ----
   const fillTape = () => {
     // Keep marquee speed consistent across viewport sizes (px/sec), regardless of how wide the track is.
-    const PX_PER_SEC = 110; // tuned to feel good on mobile + desktop
+    const PX_PER_SEC = 45; // slower, still consistent across mobile + desktop
 
     document.querySelectorAll('.caution-tape').forEach((tape) => {
       const track = tape.querySelector('.caution-tape__track');
@@ -140,7 +180,7 @@
       const groupW = group.getBoundingClientRect().width;
       if (groupW > 0) {
         tape.style.setProperty('--marquee-shift', `${-groupW}px`);
-        const duration = Math.max(8, groupW / PX_PER_SEC);
+        const duration = Math.max(14, groupW / PX_PER_SEC);
         track.style.animationDuration = `${duration.toFixed(3)}s`;
         // Start mid-stream so the tape is already filled on first paint.
         track.style.animationDelay = `${(-duration / 2).toFixed(3)}s`;
