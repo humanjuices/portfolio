@@ -1,0 +1,223 @@
+:root {
+  --bg-color: #0b0b0e;
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.72);
+  /* Caution tape sizing */
+  --tape-h: 26px;            /* investigate (base) */
+  --tape-primary-h: 32px;    /* HUMANJUICES (red) */
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(0,0,0,0.08), rgba(0,0,0,0.55));
+  pointer-events: none;
+}
+
+.poster {
+  position: relative;
+  min-height: 100dvh;
+  display: block;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.poster__frame {
+  margin: 0;
+  position: fixed;
+  inset: 0;
+  /* Ensure we still respect iOS safe areas, but keep full coverage */
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+}
+
+.poster__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* fill the viewport */
+  object-position: 50% 50%; /* JS overrides to keep flashing bbox visible */
+}
+
+.hotspots {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none; /* allow only hotspots to receive clicks */
+}
+
+.hotspot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  background: transparent;
+  /* invisible by default */
+  outline: none;
+}
+
+.hotspot:focus-visible,
+.hotspot:hover {
+  /* subtle dev affordance; remove later if desired */
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+}
+
+/* ---- Animated caution tape banner ---- */
+.caution-tape {
+  --tape-bg: #ffd400;
+  --tape-fg: #000;
+  --tape-text-y: 0px;
+  position: fixed;
+  left: 50%;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%) rotate(-2.2deg);
+  width: 130vw; /* feel like it extends past the viewport */
+  height: var(--tape-h); /* investigate/base height */
+  z-index: 20;
+  pointer-events: none;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.55);
+  border-radius: 2px;
+  overflow: hidden;
+  /* yellow tape + faint diagonal striping */
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0,0,0,0.10) 0px,
+      rgba(0,0,0,0.10) 8px,
+      rgba(0,0,0,0.00) 8px,
+      rgba(0,0,0,0.00) 16px
+    ),
+    var(--tape-bg);
+}
+
+.caution-tape--red {
+  --tape-bg: #d61c1c;
+  --tape-fg: #fff;
+  height: var(--tape-primary-h);
+  /* Impact sits a bit high visually; nudge down slightly for the thicker tape */
+  --tape-text-y: -1px;
+}
+
+.caution-tape--yellow {
+  --tape-bg: #ffd400;
+  --tape-fg: #000;
+}
+
+.caution-tape--secondary {
+  /* Position relative to the primary tape height so they don't overlap */
+  top: calc(16px + env(safe-area-inset-top, 0px) + var(--tape-primary-h) + 8px);
+  /* ~10deg offset from the primary tape (-2.2deg) */
+  transform: translateX(-50%) rotate(7.8deg);
+  z-index: 19;
+}
+
+.caution-tape--news {
+  --tape-bg: #ff4d00; /* neon orange */
+  --tape-fg: #000;
+  top: auto;
+  /* Move up a bit from the bottom */
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  width: 150vw;
+  transform: translateX(-50%) rotate(-12deg);
+  z-index: 18;
+  /* Add a subtle "tiled" crosshatch without removing the existing stripes */
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(0,0,0,0.06) 0px,
+      rgba(0,0,0,0.06) 10px,
+      rgba(0,0,0,0.00) 10px,
+      rgba(0,0,0,0.00) 20px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0,0,0,0.10) 0px,
+      rgba(0,0,0,0.10) 8px,
+      rgba(0,0,0,0.00) 8px,
+      rgba(0,0,0,0.00) 16px
+    ),
+    var(--tape-bg);
+}
+
+.caution-tape__track {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  width: max-content;
+  will-change: transform;
+  animation: tape-marquee 15s linear infinite;
+}
+
+.caution-tape__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  padding-right: 18px;
+}
+
+.caution-tape__word,
+.caution-tape__sep {
+  color: var(--tape-fg);
+  font-family: Impact, Haettenschweiler, "Arial Black", "Franklin Gothic Heavy", sans-serif;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateY(var(--tape-text-y));
+}
+
+.caution-tape__sep {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Move left->right continuously by shifting one group width */
+@keyframes tape-marquee {
+  from { transform: translateX(var(--marquee-shift, -50%)); }
+  to   { transform: translateX(0%); }
+}
+
+@media (max-width: 520px) {
+  :root {
+    --tape-h: 22px;         /* investigate/base */
+    --tape-primary-h: 28px; /* HUMANJUICES */
+  }
+
+  .caution-tape--red {
+    transform: translateX(-50%) rotate(-2deg);
+  }
+  .caution-tape--secondary {
+    transform: translateX(-50%) rotate(8deg);
+  }
+  .caution-tape--news {
+    transform: translateX(-50%) rotate(-12deg);
+    bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+  }
+  .caution-tape__word,
+  .caution-tape__sep {
+    font-size: 14px;
+  }
+}
+

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Humanjuices</title>
+    <link rel="stylesheet" href="game.css" />
+  </head>
+  <body>
+    <header>
+      <img id="logo" src="img/humanjuices-fancy.gif" alt="Humanjuices" />
+    </header>
+
+    <!-- Top-right info button -->
+    <button id="info-button" type="button" aria-label="Info">
+      <img src="img/info-sign.png" alt="" />
+    </button>
+
+    <!-- Scalable stage: sized to model's natural resolution; scaled to fit viewport -->
+    <main id="game-container">
+      <div id="stage" aria-label="dress-up stage">
+        <img id="model" src="img/me.png" alt="Model" />
+        <!-- Clothing items will be appended inside #stage as you drag them in -->
+      </div>
+    </main>
+
+    <!-- Left/Right item stacks (thumbnails) -->
+    <div id="items-container">
+      <aside id="items-left" class="items-column" aria-label="clothing items left">
+        <!--
+          Per-item sizing:
+          - Edit `data-scale` to control how big an item is when dragged onto the model.
+          - 1.0 = default size, 0.8 = smaller, 1.2 = bigger.
+        -->
+        <div id="group-hats" class="items-group" data-category="hats" aria-label="hats">
+          <img src="img/hats/cartoon_hat.png" class="draggable" alt="cartoon hat" loading="lazy" data-scale="0.5" />
+        </div>
+
+        <div id="group-tops" class="items-group" data-category="tops" aria-label="tops">
+          <img src="img/tops/bandeau.png" class="draggable" alt="bandeau" loading="lazy" data-scale="0.6" />
+          <img src="img/tops/frilly_shirt.png" class="draggable" alt="frilly shirt" loading="lazy" data-scale="0.7" />
+          <img src="img/tops/flinestone_shirt.png" class="draggable" alt="flinestone shirt" loading="lazy" data-scale="0.55" />
+          <img src="img/tops/half_shirt.png" class="draggable" alt="half shirt" loading="lazy" data-scale="1.4" />
+          <img src="img/tops/high_viz_top.png" class="draggable" alt="high viz top" loading="lazy" data-scale="0.6" />
+          <img src="img/tops/striped_shirt.png" class="draggable" alt="striped shirt" loading="lazy" data-scale="1.3" />
+          <img src="img/tops/sweater.png" class="draggable" alt="sweater" loading="lazy" data-scale="1.3" />
+          <img src="img/tops/t_shirt.png" class="draggable" alt="t shirt" loading="lazy" data-scale="0.8" />
+          <img src="img/tops/top_2.png" class="draggable" alt="top 2" loading="lazy" data-scale="0.5" />
+          <img src="img/tops/underwear_shirt.png" class="draggable" alt="underwear shirt" loading="lazy" data-scale="0.7" />
+        </div>
+
+        <div id="group-socks" class="items-group" data-category="socks" aria-label="socks">
+          <img src="img/socks/leg_warmers.png" class="draggable" alt="leg warmers" loading="lazy" data-scale="0.85" />
+          <img src="img/socks/socks.png" class="draggable" alt="socks" loading="lazy" data-scale="0.9" />
+          <img src="img/socks/striped_socks.png" class="draggable" alt="striped socks" loading="lazy" data-scale="0.6" />
+        </div>
+      </aside>
+
+      <div id="trashcan" aria-label="trash can" title="drag here to remove from stage">
+        <img src="img/trashcan/trashcan.png" alt="Trash can" loading="lazy" />
+      </div>
+
+      <aside id="items-right" class="items-column" aria-label="clothing items right">
+        <div id="group-fullbody" class="items-group" data-category="fullbody" aria-label="full body">
+          <img src="img/fullbody/jumpsuit.png" class="draggable" alt="jumpsuit" loading="lazy" data-scale="1.35" />
+          <img src="img/fullbody/onesie.png" class="draggable" alt="onesie" loading="lazy" data-scale="1.15" />
+          <img src="img/fullbody/romper.png" class="draggable" alt="romper" loading="lazy" data-scale="1.2" />
+          <img src="img/fullbody/striped_suit.png" class="draggable" alt="striped suit" loading="lazy" data-scale="1.35" />
+        </div>
+
+        <div id="group-bottoms" class="items-group" data-category="bottoms" aria-label="bottoms">
+          <img src="img/bottoms/apron.png" class="draggable" alt="apron" loading="lazy" data-scale="0.8" />
+          <img src="img/bottoms/bloomers.png" class="draggable" alt="bloomers" loading="lazy" data-scale="0.8" />
+          <img src="img/bottoms/fuzzy_pants.png" class="draggable" alt="fuzzy pants" loading="lazy" data-scale="0.85" />
+          <img src="img/bottoms/fuzzy_skirt.png" class="draggable" alt="fuzzy skirt" loading="lazy" data-scale="0.7" />
+          <img src="img/bottoms/long_shorts.png" class="draggable" alt="long shorts" loading="lazy" data-scale="0.8" />
+          <img src="img/bottoms/pants.png" class="draggable" alt="pants" loading="lazy" data-scale="1" />
+          <img src="img/bottoms/pants_3.png" class="draggable" alt="pants 3" loading="lazy" data-scale="0.9" />
+          <img src="img/bottoms/pirate_bloomers.png" class="draggable" alt="pirate bloomers" loading="lazy" data-scale="0.8" />
+          <img src="img/bottoms/short_shorts.png" class="draggable" alt="short shorts" loading="lazy" data-scale="0.65" />
+          <img src="img/bottoms/short_shorts_fire.png" class="draggable" alt="short shorts fire" loading="lazy" data-scale="0.65" />
+          <img src="img/bottoms/shorts.png" class="draggable" alt="shorts" loading="lazy" data-scale="0.65" />
+          <img src="img/bottoms/skirt.png" class="draggable" alt="skirt" loading="lazy" data-scale="0.9" />
+          <img src="img/bottoms/skirt_.png" class="draggable" alt="skirt" loading="lazy" data-scale="0.8" />
+          <img src="img/bottoms/skirt_2.png" class="draggable" alt="skirt 2" loading="lazy" data-scale="0.7" />
+          <img src="img/bottoms/snow_pants.png" class="draggable" alt="snow pants" loading="lazy" data-scale="0.9" />
+          <img src="img/bottoms/star_pants.png" class="draggable" alt="star pants" loading="lazy" data-scale="1.65" />
+        </div>
+      </aside>
+    </div>
+
+    <!-- Mobile bottom drawer (contents are populated by JS on small screens) -->
+    <div id="closet-drawer" aria-label="closet drawer">
+      <div id="closet-drawer-content"></div>
+    </div>
+    <!-- Mobile-only XP-style scrollbar for the drawer (easier than swipe-dragging on iOS).
+         Important: this must NOT be inside #closet-drawer, otherwise it scrolls away with scrollLeft. -->
+    <div id="drawer-scrollbar" aria-hidden="true">
+      <div id="drawer-scrollbar-thumb"></div>
+    </div>
+
+    <!-- Info modal -->
+    <div id="info-modal" class="xp-modal" hidden>
+      <div class="xp-modal-overlay" data-close="true"></div>
+      <div
+        class="xp-window"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="info-modal-title"
+      >
+        <div class="xp-titlebar">
+          <div id="info-modal-title" class="xp-titlebar-text">INFO</div>
+          <button id="info-modal-close" class="xp-titlebar-close" type="button" aria-label="Close">
+            X
+          </button>
+        </div>
+        <div class="xp-content">
+          <div id="info-modal-body" class="xp-bsod">
+            <p class="xp-centered">
+              A small interactive archive of pieces designed and made by humanjuices. The clothes are simple, functional, and meant to be worn daily. You are invited to dress the designer.
+            </p>
+            <p class="xp-centered">
+              © 2004–2026 humanjuices studio<br />
+              All garments upcycled.<br />
+              System optimized for curiosity, not efficiency.
+              <br /><br />
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
+

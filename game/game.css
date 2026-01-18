@@ -1,0 +1,531 @@
+/* Fullscreen background + centered scalable stage so the model and clothes scale together. */
+
+/* ----- Reset & viewport sizing ----- */
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* keep the stage full-screen without scrollbars */
+}
+
+/* ----- Full-viewport background layer ----- */
+:root {
+  /* Optional: set a background image like: url('your-background.jpg') */
+  --bg-image: url('img/background.jpg');
+  --bg-color: #0f0f13; /* deep neutral */
+
+  /* Stage position tuning */
+  --stage-y-offset: 18px; /* used for mobile centering */
+  --stage-bottom-offset: 8px; /* desktop: keep the model's bottom edge pinned */
+
+  /* Thumbnail sizing (tweak these as you give feedback) */
+  --thumb-max-w: 100%;
+  --thumb-hats-max-h: 10vh;
+  --thumb-tops-max-h: 16vh;
+  --thumb-bottoms-max-h: 16vh;
+  --thumb-fullbody-max-h: 18vh;
+  --thumb-socks-max-h: 12vh;
+}
+
+/* Fallback: set the body background directly (some browsers can be finicky with ::before stacking). */
+body {
+  background-color: var(--bg-color);
+  background-image: var(--bg-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;              /* top:0; right:0; bottom:0; left:0 */
+  z-index: 0;            /* sits behind everything */
+  background-color: var(--bg-color);
+  background-image: var(--bg-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;  /* never intercept clicks/drags */
+}
+
+/* ----- Site title & subtitle overlay ----- */
+header {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3; /* above model & items tray text-wise */
+  text-align: center;
+  color: #fff;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  text-shadow: 0 2px 12px rgba(0,0,0,.6);
+  pointer-events: none; /* text doesn't block drags */
+}
+
+header #logo {
+  display: block;
+  margin: 0 auto;
+  width: min(560px, 86vw);
+  height: auto;
+  max-height: 18vh;
+  object-fit: contain;
+}
+
+header p {
+  margin: .25rem 0 0;
+  font-weight: 700;
+  letter-spacing: .2em;
+  font-size: clamp(12px, 1.8vw, 18px);
+}
+
+/* ---- Top-right info button ---- */
+#info-button {
+  position: fixed;
+  /* Align to the same edge padding as the clothing columns */
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  /* Pull left by ~half the icon width */
+  right: calc(10px + env(safe-area-inset-right, 0px) + 44px);
+  z-index: 20;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+#info-button:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.45));
+}
+
+#info-button:active {
+  transform: scale(0.98);
+}
+
+#info-button img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ----- Scalable stage ----- */
+#stage {
+  position: fixed;
+  left: 50%;
+  top: auto;
+  bottom: var(--stage-bottom-offset);
+  /* width/height set by JS to model's natural size; transform updated to scale */
+  transform: translateX(-50%) scale(1);
+  transform-origin: bottom center;
+  z-index: 2; /* under header & items thumbnails */
+}
+
+/* Model fills the stage's logical box */
+#model {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 0;                 /* clothes will render above */
+  pointer-events: none;       /* don't block drags */
+  user-select: none;
+}
+
+/* ----- Items tray: left & right columns flanking the stage ----- */
+#items-container {
+  position: fixed;
+  inset: 0;
+  /* Use dynamic viewport units so scroll height matches the visible viewport (fixes cut-off on some browsers). */
+  height: 100vh;
+  height: 100dvh;
+  /* Two sidebars flanking the center stage; sidebars are scrollable. */
+  display: grid;
+  grid-template-columns: minmax(160px, 22vw) 1fr minmax(160px, 22vw);
+  align-items: start;
+  z-index: 4;                 /* above model */
+  pointer-events: none;       /* container doesn't block drags */
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+#closet-drawer {
+  display: none;
+}
+
+#drawer-scrollbar {
+  display: none;
+}
+
+.items-column {
+  pointer-events: auto;
+  box-sizing: border-box;
+  /* Fill the container height so scrolling is reliable */
+  height: 100%;
+  /* Top padding clears header; bottom padding keeps last item off the bottom edge */
+  padding: 96px 10px calc(56px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Hide scrollbars for the desktop auto-scroll columns (keep scrolling enabled) */
+@media (min-width: 769px) {
+  .items-column {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE/Edge legacy */
+  }
+
+  .items-column::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;              /* Chrome/Safari */
+  }
+}
+
+#items-left {
+  grid-column: 1;
+}
+
+#items-right {
+  grid-column: 3;
+}
+
+.items-column, #trashcan {
+  pointer-events: auto;
+}
+
+#trashcan {
+  position: fixed;
+  z-index: 6;
+  width: 183px;  /* ~50% bigger than 122px */
+  height: 183px; /* ~50% bigger than 122px */
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* image-only: no backplate */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: transform 120ms ease, filter 120ms ease;
+  pointer-events: none; /* don't block scroll gestures; drop detection uses geometry */
+}
+
+#trashcan img {
+  width: 168px;
+  height: 168px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+#trashcan.is-active {
+  transform: scale(1.08);
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,0.35)) drop-shadow(0 0 14px rgba(255, 80, 80, 0.65));
+}
+
+.items-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.items-group img {
+  height: auto;
+  width: auto;
+  max-width: var(--thumb-max-w); /* never overflow into the model column */
+  object-fit: contain;
+  pointer-events: auto;       /* allow grabbing/dragging */
+}
+
+/* Per-category thumbnail sizing */
+.items-group[data-category="hats"] img { max-height: var(--thumb-hats-max-h); }
+.items-group[data-category="tops"] img { max-height: var(--thumb-tops-max-h); }
+.items-group[data-category="bottoms"] img { max-height: var(--thumb-bottoms-max-h); }
+.items-group[data-category="fullbody"] img { max-height: var(--thumb-fullbody-max-h); }
+.items-group[data-category="socks"] img { max-height: var(--thumb-socks-max-h); }
+
+/* ----- Draggable item affordances ----- */
+.draggable {
+  cursor: grab;
+  touch-action: none; /* improves pointer handling on touch devices */
+}
+
+/* Ensure a dragged item (absolute) always renders above everything */
+.draggable[style*='position: absolute'] {
+  z-index: 5 !important;
+}
+
+/* ---- XP-style modal + BSOD-blue content ---- */
+.xp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.xp-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.xp-window {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(720px, 92vw);
+  max-height: min(72dvh, 640px);
+  display: flex;
+  flex-direction: column;
+  font-family: Tahoma, Verdana, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  /* classic beveled border */
+  background: #d4d0c8;
+  border: 2px solid #000;
+  box-shadow: 0 20px 55px rgba(0,0,0,0.55);
+}
+
+.xp-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 6px 6px 10px;
+  /* XP-ish blue title bar */
+  background: linear-gradient(to bottom, #3a6ea5, #2b579a);
+  color: #fff;
+  user-select: none;
+}
+
+.xp-titlebar-text {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+}
+
+.xp-titlebar-close {
+  width: 24px;
+  height: 22px;
+  line-height: 20px;
+  font-weight: 800;
+  font-size: 13px;
+  color: #000;
+  background: #d4d0c8;
+  border-top: 2px solid #fff;
+  border-left: 2px solid #fff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  cursor: pointer;
+}
+
+.xp-titlebar-close:active {
+  border-top: 2px solid #404040;
+  border-left: 2px solid #404040;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+}
+
+.xp-content {
+  padding: 10px;
+  background: #d4d0c8;
+}
+
+.xp-bsod {
+  background: #0000aa; /* BSOD blue */
+  color: #fff;
+  padding: 14px 16px;
+  border: 2px inset #fff;
+  font-family: "Lucida Console", "Courier New", Courier, monospace;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow: auto;
+  max-height: calc(min(72dvh, 640px) - 54px);
+}
+
+.xp-bsod p {
+  margin: 0 0 12px;
+}
+
+.xp-bsod p:last-child {
+  margin-bottom: 0;
+}
+
+.xp-bsod .xp-centered {
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* ---- Mobile bottom drawer ---- */
+@media (max-width: 768px) {
+  :root {
+    /* Used by BOTH the drawer padding and the external XP scrollbar height */
+    --drawer-scrollbar-h: 28px;
+  }
+
+  /* Keep the logo a bit shorter on phones so the stage can be larger */
+  header #logo {
+    max-height: 12vh;
+    width: min(460px, 82vw);
+  }
+
+  /* Hide the desktop side columns; use bottom drawer instead */
+  #items-left,
+  #items-right {
+    display: none;
+  }
+
+  #closet-drawer {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 7; /* above items container, below header text/logo */
+    /* Make the drawer taller so items are easier to see/tap on mobile */
+    height: min(16dvh, 132px);
+    /* Reserve room for the XP scrollbar at the very bottom */
+    padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px) + var(--drawer-scrollbar-h));
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Hide native browser scrollbar (we use the custom XP scrollbar instead) */
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE/Edge legacy */
+    /* No darken / blur background (requested) */
+    background: transparent;
+    border-top: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  #closet-drawer::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none; /* Safari/Chrome */
+  }
+
+  #closet-drawer-content {
+    /* iOS Safari can shrink flex content to fit; use intrinsic width so overflow exists */
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    height: 100%;
+    width: max-content;
+  }
+
+  /* One horizontal row of items (no wrapping) */
+  #closet-drawer .items-group {
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+    height: 100%; /* gives images a definite max-height reference */
+  }
+
+  #closet-drawer .items-group img {
+    /* Force thumbnails to always fit within the drawer's height (no vertical clipping) */
+    max-height: calc(100% - 2px);
+    max-width: 52vw;
+  }
+
+  /* --- Mobile-only XP-style scrollbar for the drawer --- */
+  #drawer-scrollbar {
+    display: block;
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+    height: var(--drawer-scrollbar-h);
+    background: #d4d0c8;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #404040;
+    border-bottom: 2px solid #404040;
+    box-sizing: border-box;
+    touch-action: none;
+    z-index: 8; /* sits above the fixed drawer */
+  }
+
+  #drawer-scrollbar-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: calc(100% - 4px);
+    width: 56px; /* JS will override */
+    background: transparent;
+    background-image: url('img/bone_scroll.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% 100%;
+    border: 0;
+    box-sizing: border-box;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  #drawer-scrollbar-thumb:active {
+    filter: brightness(0.95) contrast(1.05);
+    cursor: grabbing;
+  }
+
+  /* Override per-category vh-based sizing inside the drawer (prevents cut-off). */
+  #closet-drawer .items-group[data-category="hats"] img,
+  #closet-drawer .items-group[data-category="tops"] img,
+  #closet-drawer .items-group[data-category="bottoms"] img,
+  #closet-drawer .items-group[data-category="fullbody"] img,
+  #closet-drawer .items-group[data-category="socks"] img {
+    max-height: calc(100% - 2px);
+  }
+
+  /* Reduce stage offset slightly on mobile so the model gets more vertical room */
+  html:root {
+    /* Negative moves the stage up (more room for the larger drawer) */
+    --stage-y-offset: -10px;
+  }
+
+  /* Mobile keeps the centered stage positioning */
+  #stage {
+    top: calc(50% + var(--stage-y-offset));
+    bottom: auto;
+    transform: translate(-50%, -50%) scale(1);
+    transform-origin: center center;
+  }
+
+  /* Make the trash can a bit smaller on mobile (requested) */
+  #trashcan {
+    width: 165px;  /* ~10% smaller than 183px */
+    height: 165px; /* ~10% smaller than 183px */
+  }
+
+  #trashcan img {
+    width: 152px;  /* ~10% smaller than 168px */
+    height: 152px; /* ~10% smaller than 168px */
+  }
+
+  /* Slightly smaller info button on mobile so it doesn't crowd the logo */
+  #info-button,
+  #info-button img {
+    width: 80px;
+    height: 80px;
+  }
+
+  /* Pull left by ~half the mobile icon width */
+  #info-button {
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+}
