@@ -229,6 +229,16 @@ body::before {
   to   { transform: translateX(0%); }
 }
 
+/* Move right->left (used by the news banner) */
+@keyframes tape-marquee-rtl {
+  from { transform: translateX(0%); }
+  to   { transform: translateX(var(--marquee-shift, -50%)); }
+}
+
+.caution-tape--news .caution-tape__track {
+  animation-name: tape-marquee-rtl;
+}
+
 @media (max-width: 520px) {
   :root {
     --tape-h: 30px;         /* investigate + news (base) */
