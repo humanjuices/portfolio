@@ -60,7 +60,7 @@ body::before {
   object-position: 50% 50%; /* JS overrides to keep flashing bbox visible */
 }
 
-.cop {
+.cop-btn {
   position: fixed;
   left: calc(env(safe-area-inset-left, 0px) + 6px);
   bottom: 0; /* JS will align this to the news banner bottom edge */
@@ -68,15 +68,83 @@ body::before {
   width: auto;
   height: auto;
   max-width: min(46vw, 520px);
-  max-height: 30vh; /* JS will increase/decrease this based on hotspots */
+  /* JS will size the inner image; keep the wrapper unconstrained */
   user-select: none;
-  pointer-events: none;
+  pointer-events: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: url('img/magcursor_cursor.png') 21 32, pointer;
   filter: drop-shadow(0 10px 26px rgba(0,0,0,0.55));
 }
 
 @media (max-width: 520px) {
-  .cop {
+  .cop-btn {
     max-width: min(74vw, 560px);
+  }
+}
+
+.cop-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 30vh; /* JS will increase/decrease this based on hotspots */
+  user-select: none;
+  pointer-events: none; /* clicks go to the button */
+}
+
+.cop-bubble {
+  position: fixed; /* JS clamps this so it always stays on-screen */
+  left: 0;
+  top: 0;
+  transform: translate(-100%, -100%) scale(0.98);
+  max-width: 220px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.95);
+  color: #0b1b3a;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  box-shadow: 0 14px 38px rgba(0,0,0,0.45);
+  border: 2px solid rgba(11, 27, 58, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.cop-bubble::after {
+  content: "";
+  position: absolute;
+  top: 58%;
+  width: 0;
+  height: 0;
+  border: 10px solid transparent;
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,0.25));
+}
+
+.cop-btn[data-bubble-side="left"] .cop-bubble::after {
+  right: -10px;
+  border-left-color: rgba(255,255,255,0.95);
+}
+
+.cop-btn[data-bubble-side="right"] .cop-bubble::after {
+  left: -10px;
+  border-right-color: rgba(255,255,255,0.95);
+}
+
+.cop-btn[aria-expanded="true"] .cop-bubble {
+  opacity: 1;
+  transform: translate(-100%, -100%) scale(1);
+}
+
+/* Desktop: show bubble on hover/exit (keep mobile click behavior) */
+@media (hover: hover) and (pointer: fine) {
+  .cop-btn:hover .cop-bubble,
+  .cop-btn:focus-visible .cop-bubble {
+    opacity: 1;
+    transform: translate(-100%, -100%) scale(1);
   }
 }
 

@@ -3,6 +3,38 @@
   const frame = document.querySelector('.poster__frame');
   if (!img || !frame) return;
 
+  // ---- Cop speech bubble toggle ----
+  const copBtn = document.getElementById('cop-btn');
+  if (copBtn instanceof HTMLButtonElement && copBtn.dataset.bound !== '1') {
+    copBtn.dataset.bound = '1';
+
+    // Desktop uses hover; mobile uses click/tap.
+    const isCoarsePointer =
+      window.matchMedia &&
+      (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches);
+
+    if (isCoarsePointer) {
+      const close = () => copBtn.setAttribute('aria-expanded', 'false');
+      const toggle = () => {
+        const isOpen = copBtn.getAttribute('aria-expanded') === 'true';
+        copBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      };
+      copBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggle();
+      });
+      // close when tapping anywhere else
+      window.addEventListener('click', close);
+      // close on escape (if a keyboard is present)
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') close();
+      });
+    } else {
+      // Ensure we don't get "stuck open" from a prior coarse-pointer session.
+      copBtn.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   // Key areas in ORIGINAL image pixels (x1,y1,x2,y2)
   // We keep these visible (and above the bottom news banner) while using object-fit: cover.
   const hotspots = [
@@ -130,8 +162,9 @@
     });
 
     // ---- Size/position the cop image (bottom-left) ----
-    const cop = document.querySelector('.cop');
-    if (cop && cop instanceof HTMLImageElement) {
+    const cop = document.querySelector('.cop-btn');
+    const copImg = cop?.querySelector?.('.cop-img');
+    if (cop && cop instanceof HTMLElement && copImg instanceof HTMLImageElement) {
       const margin = 10;
 
       // Find the lowest (visually) hotspot on screen.
@@ -153,7 +186,46 @@
       const maxH = Math.max(0, anchorY - lowestHotspotBottom - margin);
 
       // Apply the max height; let the image keep its aspect ratio.
-      cop.style.maxHeight = `${Math.floor(maxH)}px`;
+      copImg.style.maxHeight = `${Math.floor(maxH)}px`;
+
+      // ---- Keep the speech bubble fully on-screen ----
+      const bubble = cop.querySelector?.('.cop-bubble');
+      if (bubble instanceof HTMLElement) {
+        const copRect = cop.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // Anchor near the cop's head (in viewport coordinates)
+        const anchorX = copRect.left + copRect.width * 0.28;
+        const anchorY2 = copRect.top + copRect.height * 0.16;
+
+        // Measure bubble even when hidden (opacity 0 still has layout size)
+        const bRect = bubble.getBoundingClientRect();
+        const bw = Math.max(1, bRect.width);
+        const bh = Math.max(1, bRect.height);
+
+        const pad = 8;
+        const gap = 16;
+
+        // Prefer LEFT side of the head
+        let side = 'left';
+        let left = anchorX - bw - gap;
+        let top = anchorY2 - bh - gap;
+
+        // If left would go off-screen, flip to right side.
+        if (left < pad) {
+          side = 'right';
+          left = anchorX + gap;
+        }
+
+        // Clamp within viewport
+        left = clamp(left, pad, vw - bw - pad);
+        top = clamp(top, pad, vh - bh - pad);
+
+        cop.dataset.bubbleSide = side;
+        bubble.style.left = `${Math.round(left)}px`;
+        bubble.style.top = `${Math.round(top)}px`;
+      }
     }
   };
 

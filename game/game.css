@@ -7,6 +7,16 @@ html, body {
   overflow: hidden; /* keep the stage full-screen without scrollbars */
 }
 
+/* Custom cursor ONLY for the game page */
+html, body {
+  cursor: url('img/handclick.png') 0 0, auto;
+}
+
+/* Force the custom cursor everywhere (overrides grab/pointer defaults) */
+body, body * {
+  cursor: url('img/handclick.png') 0 0, pointer !important;
+}
+
 /* ----- Full-viewport background layer ----- */
 :root {
   /* Optional: set a background image like: url('your-background.jpg') */
@@ -93,13 +103,12 @@ header p {
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
-  transition: transform 120ms ease, filter 120ms ease;
+  filter: none;
+  transition: transform 120ms ease;
 }
 
 #info-button:hover {
   transform: scale(1.05);
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.45));
 }
 
 #info-button:active {
@@ -259,7 +268,7 @@ header p {
 
 /* ----- Draggable item affordances ----- */
 .draggable {
-  cursor: grab;
+  cursor: inherit;
   touch-action: none; /* improves pointer handling on touch devices */
 }
 
@@ -474,13 +483,13 @@ header p {
     background-size: 100% 100%;
     border: 0;
     box-sizing: border-box;
-    cursor: grab;
+    cursor: inherit;
     touch-action: none;
   }
 
   #drawer-scrollbar-thumb:active {
     filter: brightness(0.95) contrast(1.05);
-    cursor: grabbing;
+    cursor: inherit;
   }
 
   /* Override per-category vh-based sizing inside the drawer (prevents cut-off). */

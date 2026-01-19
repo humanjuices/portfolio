@@ -8,6 +8,7 @@
   let isDragging = false;
   let cleanupConveyors = null;
   let cleanupDrawerScrollbar = null;
+  let audioState = null;
 
   const stage = document.getElementById('stage');
   const model = document.getElementById('model');
@@ -641,6 +642,16 @@
           trashcan.classList.remove('is-active');
           if (over && stage.contains(el)) {
             returnToHome(el);
+            // Play "trash" sound on successful removal (release over trashcan)
+            try {
+              const a = new Audio('audio/trashsound.mp3');
+              a.preload = 'auto';
+              a.volume = 0.9;
+              const p = a.play();
+              if (p && typeof p.catch === 'function') p.catch(() => {});
+            } catch {
+              // ignore
+            }
           }
         }
         try {
@@ -657,6 +668,128 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // ---- Global click/tap SFX ----
+    // Use Web Audio when possible (more reliable for "play on release" on mobile Safari).
+    const makeAudioState = () => {
+      const html = {
+        click: new Audio('audio/mouseclick.mp3'),
+        trash: new Audio('audio/trashsound.mp3'),
+      };
+      html.click.preload = 'auto';
+      html.trash.preload = 'auto';
+      html.click.volume = 0.85;
+      html.trash.volume = 0.9;
+
+      const st = {
+        ctx: null,
+        buffers: {},
+        loading: false,
+        ensured: false,
+        primed: false,
+      };
+
+      // Prime individual HTMLAudio elements so later play() calls work reliably on iOS/Safari.
+      // Do this during a user gesture (pointerdown).
+      const primeHtml = () => {
+        if (st.primed) return;
+        st.primed = true;
+        ['click', 'trash'].forEach((k) => {
+          const a = html[k];
+          if (!a) return;
+          const prevMuted = a.muted;
+          const prevVol = a.volume;
+          try {
+            a.muted = true;
+            a.volume = 0;
+            const p = a.play();
+            // Stop immediately; the goal is just to satisfy gesture gating.
+            try { a.pause(); } catch { /* ignore */ }
+            try { a.currentTime = 0; } catch { /* ignore */ }
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch {
+            // ignore
+          } finally {
+            a.muted = prevMuted;
+            a.volume = prevVol;
+          }
+        });
+      };
+
+      const ensure = async () => {
+        if (st.ensured) return;
+        st.ensured = true;
+        // Prime HTML audio immediately (gesture safe)
+        primeHtml();
+
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return;
+          st.ctx = new Ctx();
+          // Some browsers require resume() from a gesture
+          if (st.ctx.state === 'suspended') {
+            try { await st.ctx.resume(); } catch { /* ignore */ }
+          }
+
+          if (st.loading) return;
+          st.loading = true;
+
+          const loadBuffer = async (name, url) => {
+            const res = await fetch(url);
+            const ab = await res.arrayBuffer();
+            const buf = await st.ctx.decodeAudioData(ab);
+            st.buffers[name] = buf;
+          };
+
+          await Promise.allSettled([
+            loadBuffer('click', 'audio/mouseclick.mp3'),
+            loadBuffer('trash', 'audio/trashsound.mp3'),
+          ]);
+        } catch {
+          // fall back to HTMLAudioElement
+        }
+      };
+
+      const play = (name) => {
+        const buf = st.buffers[name];
+        if (st.ctx && buf) {
+          try {
+            const src = st.ctx.createBufferSource();
+            src.buffer = buf;
+            const gain = st.ctx.createGain();
+            gain.gain.value = name === 'trash' ? 0.9 : 0.85;
+            src.connect(gain);
+            gain.connect(st.ctx.destination);
+            src.start(0);
+            return;
+          } catch {
+            // fall back
+          }
+        }
+
+        const a = html[name];
+        if (!a) return;
+        try { a.currentTime = 0; } catch { /* ignore */ }
+        const p = a.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      };
+
+      return { ensure, play };
+    };
+
+    audioState = makeAudioState();
+
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        // left click for mouse; primary touch only
+        if (e.isPrimary === false) return;
+        if (e.pointerType === 'mouse' && typeof e.button === 'number' && e.button !== 0) return;
+        audioState?.ensure?.();
+        audioState?.play?.('click');
+      },
+      { capture: true },
+    );
+
     // ---- Info modal wiring ----
     let lastFocusedEl = null;
     const openInfo = () => {
