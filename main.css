@@ -68,7 +68,7 @@ body::before {
   position: fixed;
   left: calc(env(safe-area-inset-left, 0px) + 6px);
   bottom: 0; /* JS will align this to the news banner bottom edge */
-  z-index: 9999; /* above everything */
+  z-index: 10000; /* above banners, below clickable hotspots */
   width: auto;
   height: auto;
   max-width: min(46vw, 520px);
@@ -99,26 +99,87 @@ body::before {
 
 .cop-bubble {
   position: fixed; /* JS clamps this so it always stays on-screen */
-  left: 0;
-  top: 0;
+  /* Safe default position in case JS hasn't positioned it yet */
+  left: 16px;
+  top: 16px;
   /* JS sets explicit left/top, so do NOT translate by -100%/-100% here (that would double-shift off-screen). */
   transform: scale(0.98);
   transform-origin: left top;
-  max-width: 220px;
-  padding: 10px 12px;
+  /* Responsive sizing for longer copy */
+  width: clamp(240px, 46vw, 520px);
+  max-width: min(92vw, 520px);
+  padding: clamp(10px, 1.6vw, 16px) clamp(12px, 2vw, 18px);
   border-radius: 18px;
-  background: rgba(255,255,255,0.95);
+  background: #ffffff;
   color: #0b1b3a;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  box-shadow: 0 14px 38px rgba(0,0,0,0.45);
-  border: 2px solid rgba(11, 27, 58, 0.35);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  font-size: clamp(13px, 1.6vw, 16px);
+  line-height: 1.3;
+  box-shadow: none;
+  border: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 120ms ease, transform 120ms ease;
-  white-space: nowrap;
-  z-index: 50; /* above banners/hotspots/cop */
+  white-space: pre-line; /* respect \n in JS textContent */
+  z-index: 10020; /* above hotspots + cop */
+}
+
+.cop-bubble__name {
+  font-weight: 900;
+  animation: cop-name-flash 1.1s steps(1, end) infinite;
+}
+
+.cop-bubble__credit {
+  margin-top: clamp(10px, 1.2vw, 14px);
+  text-align: center;
+  font-weight: 400;
+  color: #6b7280; /* light-but-legible grey */
+  font-size: clamp(11px, 1.2vw, 13px);
+  line-height: 1.25;
+}
+
+.cop-bubble__credit-link,
+.cop-bubble__credit-link:visited {
+  color: #3b6fa8; /* blue similar brightness/saturation to the grey */
+  font-weight: 400;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.cop-bubble__credit-link:hover,
+.cop-bubble__credit-link:focus-visible {
+  color: #2b5f98;
+}
+
+@keyframes cop-name-flash {
+  0%   { color: #ff0000; } /* true red */
+  25%  { color: #00a3ff; } /* electric blue */
+  50%  { color: #ff5a00; } /* neon orange */
+  75%  { color: #39ff14; } /* neon green */
+  100% { color: #ff0000; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cop-bubble__name {
+    animation: none;
+  }
+}
+
+.cop-bubble-tail {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 120px; /* JS overrides */
+  width: auto;
+  opacity: 0; /* JS toggles */
+  pointer-events: none;
+  z-index: 10015; /* above cop/hotspots, below the bubble box */
+  filter: none;
+  transform-origin: top center;
+  will-change: transform, left, top, height, opacity;
 }
 
 .cop-bubble::after {
@@ -129,36 +190,25 @@ body::before {
   height: 0;
   border: 10px solid transparent;
   filter: drop-shadow(0 6px 8px rgba(0,0,0,0.25));
+  display: none; /* replaced by bubbletail.png */
 }
 
-.cop-btn[data-bubble-side="left"] .cop-bubble::after {
+.cop-bubble[data-side="left"]::after {
   right: -10px;
   border-left-color: rgba(255,255,255,0.95);
 }
 
-.cop-btn[data-bubble-side="right"] .cop-bubble::after {
+.cop-bubble[data-side="right"]::after {
   left: -10px;
   border-right-color: rgba(255,255,255,0.95);
 }
 
-.cop-btn[aria-expanded="true"] .cop-bubble {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* Desktop: show bubble on hover/exit (keep mobile click behavior) */
-@media (hover: hover) and (pointer: fine) {
-  .cop-btn:hover .cop-bubble,
-  .cop-btn:focus-visible .cop-bubble {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+/* Bubble visibility is controlled by JS (hover on desktop, tap on mobile). */
 
 .hotspots {
   position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 10010; /* ensure hotspots stay clickable even if cop overlaps */
   pointer-events: none; /* allow only hotspots to receive clicks */
 }
 

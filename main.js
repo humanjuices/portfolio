@@ -2,19 +2,82 @@
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   const copBtn = document.getElementById('cop-btn');
+  let __copBubble = null;
+  let __copBubbleTail = null;
+  let __bubbleOpen = false;
 
   const getCopBubbleEl = () => {
+    if (__copBubble instanceof HTMLElement) return __copBubble;
     if (!(copBtn instanceof HTMLElement)) return null;
     const bubble = copBtn.querySelector?.('.cop-bubble');
     return bubble instanceof HTMLElement ? bubble : null;
   };
 
-  const setBubbleVisible = (isVisible) => {
+  const ensureBubbleDetached = () => {
     const bubble = getCopBubbleEl();
+    if (!bubble) return null;
+    // Detach bubble from the cop button so it isn't affected by containing-block quirks
+    // (e.g. filter can create a containing block for fixed-position descendants on some browsers).
+    if (bubble.parentElement !== document.body) {
+      document.body.appendChild(bubble);
+    }
+    __copBubble = bubble;
+    return bubble;
+  };
+
+  const ensureBubbleTail = () => {
+    if (__copBubbleTail instanceof HTMLImageElement) return __copBubbleTail;
+
+    const tail = document.createElement('img');
+    tail.className = 'cop-bubble-tail';
+    tail.src = 'img/bubbletail.png';
+    tail.alt = '';
+    tail.setAttribute('aria-hidden', 'true');
+    tail.decoding = 'async';
+    tail.loading = 'eager';
+    tail.style.opacity = '0';
+    document.body.appendChild(tail);
+
+    __copBubbleTail = tail;
+    return tail;
+  };
+
+  const setTailVisible = (isVisible) => {
+    const tail = ensureBubbleTail();
+    if (!tail) return;
+    tail.style.opacity = isVisible ? '1' : '0';
+  };
+
+  const setBubbleText = () => {
+    const bubble = ensureBubbleDetached();
+    if (!bubble) return;
+    bubble.innerHTML =
+      "<strong>HELLO CITIZEN.</strong>\n\n" +
+      "You’ve entered humanjuices.com, the digital residence of <span class=\"cop-bubble__name\">Gigi Gomez</span> (humanjuices), a New York–based artist, designer, and performer.\n\n" +
+      "This website functions as an archive, studio, and ongoing case file. Evidence includes clothing, games, publications, and unfinished business.\n\n" +
+      "Click carefully.\n\n" +
+      "<div class=\"cop-bubble__credit\">Website made by <a class=\"cop-bubble__credit-link\" href=\"https://ting.directory\" target=\"_blank\" rel=\"noopener noreferrer\">Wun Ting Chan</a> © 2026</div>";
+  };
+
+  const setBubbleVisible = (isVisible) => {
+    const bubble = ensureBubbleDetached();
     if (!bubble) return;
     // Force visibility via inline styles (don’t rely on hover media queries / attribute selectors).
     bubble.style.opacity = isVisible ? '1' : '0';
     bubble.style.transform = isVisible ? 'scale(1)' : 'scale(0.98)';
+  };
+
+  const openBubble = () => {
+    __bubbleOpen = true;
+    positionCopBubble();
+    setBubbleVisible(true);
+    setTailVisible(true);
+  };
+
+  const closeBubble = () => {
+    __bubbleOpen = false;
+    setBubbleVisible(false);
+    setTailVisible(false);
   };
 
   const bindCopBubble = () => {
@@ -22,62 +85,70 @@
     if (copBtn.dataset.bound === '1') return;
     copBtn.dataset.bound = '1';
 
-    const close = () => copBtn.setAttribute('aria-expanded', 'false');
-    const toggle = () => {
-      const isOpen = copBtn.getAttribute('aria-expanded') === 'true';
-      copBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-      const nowOpen = copBtn.getAttribute('aria-expanded') === 'true';
-      if (nowOpen) positionCopBubble();
-      setBubbleVisible(nowOpen);
-    };
+    ensureBubbleDetached();
+    ensureBubbleTail();
+    setBubbleText();
 
-    // Support BOTH: desktop hover (CSS) and click-to-toggle (requested).
-    copBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggle();
-    });
+    const isCoarsePointer =
+      window.matchMedia &&
+      (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches);
 
-    // Also support hover/focus even if the hover media query doesn’t match.
-    copBtn.addEventListener('mouseenter', () => {
-      if (copBtn.getAttribute('aria-expanded') === 'true') return;
-      positionCopBubble();
-      setBubbleVisible(true);
-    });
-    copBtn.addEventListener('mouseleave', () => {
-      if (copBtn.getAttribute('aria-expanded') === 'true') return;
-      setBubbleVisible(false);
-    });
-    copBtn.addEventListener('focusin', () => {
-      positionCopBubble();
-      setBubbleVisible(true);
-    });
-    copBtn.addEventListener('focusout', () => {
-      if (copBtn.getAttribute('aria-expanded') === 'true') return;
-      setBubbleVisible(false);
-    });
+    // Default hidden
+    copBtn.setAttribute('aria-expanded', 'false');
+    closeBubble();
 
-    // close when clicking/tapping anywhere else
-    window.addEventListener('click', () => {
-      close();
-      setBubbleVisible(false);
-    });
-    // close on escape
+    if (isCoarsePointer) {
+      // Mobile/tablet: tap to toggle bubble
+      copBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (__bubbleOpen) {
+          copBtn.setAttribute('aria-expanded', 'false');
+          closeBubble();
+        } else {
+          copBtn.setAttribute('aria-expanded', 'true');
+          openBubble();
+        }
+      });
+
+      // Tap anywhere else closes
+      window.addEventListener(
+        'click',
+        (e) => {
+          if (!(e.target instanceof Node)) return;
+          if (copBtn.contains(e.target)) return;
+          copBtn.setAttribute('aria-expanded', 'false');
+          closeBubble();
+        },
+        { capture: true },
+      );
+    } else {
+      // Desktop: hover-only
+      copBtn.addEventListener('mouseenter', () => {
+        openBubble();
+      });
+      copBtn.addEventListener('mouseleave', () => {
+        closeBubble();
+      });
+
+      // Keyboard accessibility: show on focus, hide on blur
+      copBtn.addEventListener('focusin', openBubble);
+      copBtn.addEventListener('focusout', closeBubble);
+    }
+
+    // Close on escape (both modes)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        close();
-        setBubbleVisible(false);
+        copBtn.setAttribute('aria-expanded', 'false');
+        closeBubble();
       }
     });
-
-    // Default closed on load
-    copBtn.setAttribute('aria-expanded', 'false');
-    setBubbleVisible(false);
   };
 
   const positionCopBubble = () => {
     if (!(copBtn instanceof HTMLElement)) return;
-    const bubble = copBtn.querySelector?.('.cop-bubble');
+    const bubble = ensureBubbleDetached();
     if (!(bubble instanceof HTMLElement)) return;
+    const tail = ensureBubbleTail();
 
     const copRect = copBtn.getBoundingClientRect();
     if (copRect.width <= 0 || copRect.height <= 0) return;
@@ -91,35 +162,93 @@
     const bh = Math.max(1, bRect.height || 0);
 
     const pad = 8;
-    const gap = 16;
+    // Place the bubble ABOVE the cop and slightly LEFT (clamped to screen).
+    // Since the cop is already near the left edge, "left" here means aligned closer
+    // to the cop's left side (not necessarily outside the viewport).
+    const xOffset = -32; // nudge left
+    const yOffset = -22; // nudge up
 
-    // Anchor near the cop's head (viewport coords)
-    const anchorX = copRect.left + copRect.width * 0.28;
-    const anchorY = copRect.top + copRect.height * 0.16;
+    const leftTarget = copRect.left + copRect.width * 0.06 + xOffset;
+    const topTarget = copRect.top - bh + yOffset;
 
-    // Prefer LEFT side of the head
-    let side = 'left';
-    let left = anchorX - bw - gap;
-    let top = anchorY - bh - gap;
-
-    // If left would go off-screen, flip to right side.
-    if (left < pad) {
-      side = 'right';
-      left = anchorX + gap;
-    }
+    let left = leftTarget;
+    let top = topTarget;
 
     left = clamp(left, pad, vw - bw - pad);
     top = clamp(top, pad, vh - bh - pad);
 
-    copBtn.dataset.bubbleSide = side;
+    // Used by CSS to render the speech-bubble arrow on the correct side.
+    const side =
+      left + bw / 2 < copRect.left + copRect.width / 2 ? 'left' : 'right';
+    bubble.dataset.side = side;
+
     bubble.style.left = `${Math.round(left)}px`;
     bubble.style.top = `${Math.round(top)}px`;
+
+    // ---- Tail positioning (connect bubble -> cop) ----
+    if (tail instanceof HTMLImageElement) {
+      // Tail top should touch bubble bottom
+      const overlap = 4;
+      const tailTop = top + bh - overlap;
+      const isMobileView =
+        window.innerWidth <= 768 ||
+        (window.matchMedia &&
+          (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches));
+
+      // Where the tail attaches on the bubble:
+      // - mobile: closer to the center so it reaches the cop head more naturally
+      // - desktop: slightly left-biased
+      // Mobile: nudge a touch left (user feedback: slightly too centered/right)
+      const anchorFrac = isMobileView ? 0.50 : 0.18;
+      const tailAnchorX = left + bw * anchorFrac;
+
+      // Aim the tail tip near the cop's head/upper chest.
+      const copX = copRect.left + copRect.width * 0.22;
+      // Aim a bit higher so the tail doesn't run too long / too low.
+      const copY = copRect.top + copRect.height * 0.18;
+
+      const dx = copX - tailAnchorX;
+      const dy = copY - tailTop;
+      const length = Math.hypot(dx, dy);
+
+      // Scale with both distance-to-cop and bubble size, but keep it shorter.
+      // (User feedback: the tail was too long across viewports.)
+      const base = bw * 0.26;
+      const tailLen = clamp(Math.max(length * 0.55, base), 40, 170);
+
+      // Angle: tail image is "downwards" by default; rotate toward the cop.
+      const angleRad = Math.atan2(dx, Math.max(1, dy)); // 0 = down
+      const angleDeg = (angleRad * 180) / Math.PI;
+
+      tail.style.left = `${Math.round(tailAnchorX)}px`;
+      tail.style.top = `${Math.round(tailTop)}px`;
+      tail.style.height = `${Math.round(tailLen)}px`;
+      tail.style.width = 'auto';
+      // Mobile: don't rotate the PNG (user feedback: rotation looked wrong).
+      // Desktop: rotate to "aim" toward the cop.
+      const rot = isMobileView ? 0 : angleDeg;
+      tail.style.transform = `translateX(-50%) rotate(${rot.toFixed(2)}deg)`;
+      tail.style.transformOrigin = 'top center';
+
+      // Match visibility with bubble state.
+      setTailVisible(__bubbleOpen);
+    }
   };
 
   // Bind + position ASAP (don’t depend on the background image load).
   bindCopBubble();
-  requestAnimationFrame(positionCopBubble);
-  window.addEventListener('resize', () => requestAnimationFrame(positionCopBubble));
+  requestAnimationFrame(() => {
+    setBubbleText();
+    positionCopBubble();
+    // Keep hidden unless user interaction opens it.
+    setBubbleVisible(__bubbleOpen);
+  });
+  window.addEventListener('resize', () => {
+    requestAnimationFrame(() => {
+      positionCopBubble();
+      setBubbleVisible(__bubbleOpen);
+    });
+  });
 
   const img = document.querySelector('.poster__img');
   const frame = document.querySelector('.poster__frame');
@@ -175,8 +304,9 @@
       const r = t.getBoundingClientRect();
       reserveTopPx = Math.max(reserveTopPx, r.bottom - rect.top);
     });
-    // Mobile: add a little extra breathing room so marker #1 doesn't sit under the top banners.
-    const extraMobileTopPadPx = window.innerWidth <= 520 ? 28 : 0;
+    // Mobile: add extra breathing room so the top-most marker doesn't sit too close to the top banners.
+    // This effectively shifts the visible crop window upward, pushing markers/background content down.
+    const extraMobileTopPadPx = window.innerWidth <= 520 ? 80 : 0;
     reserveTopPx = clamp(reserveTopPx + 6 + extraMobileTopPadPx, 0, Math.max(0, ch - 10));
 
     const news = document.querySelector('.caution-tape--news');
@@ -190,10 +320,20 @@
     // Reserve extra bottom space so the cop can be big without touching the lowest clickable marker.
     // We need this on desktop too; otherwise on very wide viewports the crop can push markers
     // so low that the cop has almost no room.
-    const desiredCopSpacePx =
-      window.innerWidth <= 520 ? 220 :
-      window.innerWidth <= 820 ? 200 :
-      260;
+    // On ultra-wide viewports, the "cover" crop can push markers low, which then forces
+    // the cop to shrink (we clamp cop height to stay above the lowest marker).
+    // Reserve *more* bottom space as the viewport gets wider to keep markers higher.
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    const desiredCopSpacePx = (() => {
+      if (window.innerWidth <= 520) return 220;
+      if (window.innerWidth <= 820) return 200;
+      let v = 260;
+      if (window.innerWidth >= 1200) v += 60;
+      if (window.innerWidth >= 1600) v += 70;
+      if (aspect >= 1.9) v += 60;
+      if (aspect >= 2.3) v += 60;
+      return v;
+    })();
     reserveBottomPx = clamp(
       Math.max(reserveBottomPx, desiredCopSpacePx),
       0,
@@ -260,13 +400,22 @@
     if (cop && cop instanceof HTMLElement && copImg instanceof HTMLImageElement) {
       const margin = 10;
 
-      // Find the lowest (visually) hotspot on screen.
-      let lowestHotspotBottom = 0;
+      // Find the lowest (visually) hotspot that could actually collide with the cop.
+      // On very wide viewports, the cop is far left while markers are far right, so we
+      // should not shrink the cop based on markers that don't overlap horizontally.
+      const copRectNow = cop.getBoundingClientRect();
+      const overlapPadX = 18;
+      let lowestRelevantHotspotBottom = 0;
+      let sawAnyRelevant = false;
       document.querySelectorAll('.hotspot[data-bbox]').forEach((el) => {
         const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) {
-          lowestHotspotBottom = Math.max(lowestHotspotBottom, r.bottom);
-        }
+        if (r.width <= 0 || r.height <= 0) return;
+        const overlapsX =
+          r.right >= (copRectNow.left - overlapPadX) &&
+          r.left <= (copRectNow.right + overlapPadX);
+        if (!overlapsX) return;
+        sawAnyRelevant = true;
+        lowestRelevantHotspotBottom = Math.max(lowestRelevantHotspotBottom, r.bottom);
       });
 
       // Align the cop's bottom to the bottom edge of the news banner.
@@ -276,7 +425,17 @@
       cop.style.bottom = `${Math.round(bottomOffset)}px`;
 
       // Constrain the cop so it doesn't touch the lowest clickable marker.
-      const maxH = Math.max(0, anchorY - lowestHotspotBottom - margin);
+      // If no relevant hotspots overlap with the cop horizontally, allow the cop to be taller.
+      const blockerBottom = sawAnyRelevant ? lowestRelevantHotspotBottom : 0;
+      let maxH = Math.max(0, anchorY - blockerBottom - margin);
+
+      // Ultra-wide viewports: the cop can get a bit too dominant visually. Nudge it smaller.
+      const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      const wideFactor =
+        window.innerWidth >= 1800 || aspect >= 2.4 ? 0.88 :
+        window.innerWidth >= 1400 || aspect >= 2.0 ? 0.93 :
+        1;
+      maxH *= wideFactor;
 
       // Apply the max height; let the image keep its aspect ratio.
       copImg.style.maxHeight = `${Math.floor(maxH)}px`;
