@@ -50,7 +50,9 @@
       const r = t.getBoundingClientRect();
       reserveTopPx = Math.max(reserveTopPx, r.bottom - rect.top);
     });
-    reserveTopPx = clamp(reserveTopPx + 6, 0, Math.max(0, ch - 10));
+    // Mobile: add a little extra breathing room so marker #1 doesn't sit under the top banners.
+    const extraMobileTopPadPx = window.innerWidth <= 520 ? 28 : 0;
+    reserveTopPx = clamp(reserveTopPx + 6 + extraMobileTopPadPx, 0, Math.max(0, ch - 10));
 
     const news = document.querySelector('.caution-tape--news');
     let reserveBottomPx = 0;

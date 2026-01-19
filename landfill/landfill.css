@@ -25,20 +25,34 @@ body {
   box-sizing: border-box;
 }
 
-.landfill__logo {
+.landfill__sprite {
   position: absolute;
   left: 0;
   top: 0;
-  /* Desktop feels right; shrink more aggressively on narrow screens */
-  width: clamp(240px, 60vw, 760px);
   height: auto;
   user-select: none;
   pointer-events: none;
   filter: drop-shadow(0 18px 40px rgba(0,0,0,0.55));
 }
 
+.landfill__logo {
+  /* Desktop feels right; shrink more aggressively on narrow screens */
+  width: clamp(240px, 60vw, 760px);
+}
+
+.landfill__popup {
+  /* Keep mobile size as-is, but make it smaller on desktop */
+  width: clamp(220px, 42vw, 520px);
+  /* Static, dead-center */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+
 @media (max-width: 520px) {
-  .landfill__logo {
+  .landfill__logo,
+  .landfill__popup {
     width: clamp(200px, 72vw, 520px);
   }
 }
