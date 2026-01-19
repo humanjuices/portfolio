@@ -97,7 +97,9 @@ body::before {
   position: fixed; /* JS clamps this so it always stays on-screen */
   left: 0;
   top: 0;
-  transform: translate(-100%, -100%) scale(0.98);
+  /* JS sets explicit left/top, so do NOT translate by -100%/-100% here (that would double-shift off-screen). */
+  transform: scale(0.98);
+  transform-origin: left top;
   max-width: 220px;
   padding: 10px 12px;
   border-radius: 18px;
@@ -112,6 +114,7 @@ body::before {
   pointer-events: none;
   transition: opacity 120ms ease, transform 120ms ease;
   white-space: nowrap;
+  z-index: 50; /* above banners/hotspots/cop */
 }
 
 .cop-bubble::after {
@@ -136,7 +139,7 @@ body::before {
 
 .cop-btn[aria-expanded="true"] .cop-bubble {
   opacity: 1;
-  transform: translate(-100%, -100%) scale(1);
+  transform: scale(1);
 }
 
 /* Desktop: show bubble on hover/exit (keep mobile click behavior) */
@@ -144,7 +147,7 @@ body::before {
   .cop-btn:hover .cop-bubble,
   .cop-btn:focus-visible .cop-bubble {
     opacity: 1;
-    transform: translate(-100%, -100%) scale(1);
+    transform: scale(1);
   }
 }
 
